@@ -9,6 +9,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 public class ReportingService {
     private final ReservationService reservationService;
@@ -48,10 +50,25 @@ public class ReportingService {
     }
 
     private double calculateTotalRevenue(List<Reservation> reservations) {
-        return reservations.stream()
-                .mapToDouble(this::calculateReservationRevenue)
-                .sum();
+        return calculateTotalRevenueRecursively(reservations);
     }
+
+    private double calculateTotalRevenueRecursively(List<Reservation> reservations) {
+        if (reservations.isEmpty()) {
+            return 0.0;
+        }
+        return calculateReservationRevenue(reservations.get(0)) + 
+               calculateTotalRevenueRecursively(reservations.subList(1, reservations.size()));
+    }
+
+    private final Function<Reservation, Double> revenueCalculator = reservation -> {
+        long days = (reservation.checkOut().getTime() -
+                reservation.checkIn().getTime()) / (1000 * 60 * 60 * 24);
+        return reservation.room().price() * days;
+    };
+
+    private final BiPredicate<Reservation, Date[]> isInPeriod = (reservation, dates) -> 
+        !reservation.checkIn().before(dates[0]) && !reservation.checkOut().after(dates[1]);
 
     private double calculateReservationRevenue(Reservation reservation) {
         long days = (reservation.checkOut().getTime() -

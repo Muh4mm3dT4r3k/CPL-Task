@@ -1,9 +1,8 @@
 package com.mohamed.functional.customer;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -28,13 +27,23 @@ public class CustomerService {
                 .findFirst();
     }
 
+    private <T> Function<Customer, T> withCustomerId(int customerId, Function<Customer, T> operation) {
+        return customer -> customer.id() == customerId ? operation.apply(customer) : null;
+    }
+
     public CustomerService updateCustomerInformation(int customerId, String name, String contact, String paymentMethod) {
+        Function<Customer, Customer> updateOperation = 
+            customer -> customer.updateCustomerInformation(name, contact, paymentMethod);
+            
         List<Customer> updatedCustomerList = customers
                 .stream()
-                .map(customer -> customer.id() == customerId
-                        ? customer.updateCustomerInformation(name, contact, paymentMethod)
-                        : customer)
+                .map(customer -> Optional.ofNullable(withCustomerId(customerId, updateOperation).apply(customer))
+                        .orElse(customer))
                 .toList();
         return new CustomerService(updatedCustomerList);
+    }
+
+    public List<Customer> getAllCustomers() {
+        return List.copyOf(customers);
     }
 }
